@@ -6,6 +6,7 @@ import pyautogui
 from selenium import webdriver
 import time
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 PAGE_LIMIT = 50
@@ -27,8 +28,13 @@ def webScrap(DRIVER, URL):
     return soup
 
 def getLastAuthorAndMsg(soup):
-    last_article = soup.find_all("article")[-1]
-    return str(last_article.blockquote["data-quote"]), str(last_article.find_all("div", {"class": "bbCodeBlock-expandContent js-expandContent"})[0].text.strip())
+    last_article = soup.find_all("article", {"class":"message adum-marking-2 message--post js-post js-inlineModContainer"})[-1]
+    last_msg_ = last_article.find_all("div", {"class": "bbWrapper"})[-1]
+    removal_quotes = last_msg_.find_all('blockquote')
+    for quotes in removal_quotes:
+        quotes.decompose()
+    
+    return str(last_article["data-author"]), str(last_msg_.text.strip())
 
 def getNumber(DRIVER, URL):
     soup = webScrap(DRIVER, URL)
@@ -57,14 +63,14 @@ if __name__ == '__main__':
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     DRIVER_MANAGER = ChromeDriverManager().install()
-    DRIVER = webdriver.Chrome(DRIVER_MANAGER, options=chrome_options)
+    DRIVER = webdriver.Chrome(service=Service(DRIVER_MANAGER), options=chrome_options)
     initial_url = readURL()
     url = initial_url + "page-1"
 
     last_time = datetime.now()
     last_num, url = findLastPoint(DRIVER, url)
     last_author, last_msg = getLastAuthorAndMsg(webScrap(DRIVER, url))
-    announce("The last post was by " + last_author + " saying: " + last_msg)
+    print("The last post was by " + last_author + " saying: " + last_msg)
      
     while True:
         new_num, url = findLastPoint(DRIVER, url)
