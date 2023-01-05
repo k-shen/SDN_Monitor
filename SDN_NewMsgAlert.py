@@ -8,6 +8,7 @@ import time
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+import re
 
 PAGE_LIMIT = 50
 URL_FILE = "./URL.txt"
@@ -28,13 +29,28 @@ def webScrap(DRIVER, URL):
     return soup
 
 def getLastAuthorAndMsg(soup):
-    last_article = soup.find_all("article", {"class":"message adum-marking-2 message--post js-post js-inlineModContainer"})[-1]
-    last_msg_ = last_article.find_all("div", {"class": "bbWrapper"})[-1]
-    removal_quotes = last_msg_.find_all('blockquote')
-    for quotes in removal_quotes:
-        quotes.decompose()
+    outter_div = soup.find("div", {"class": "block-body js-replyNewMessageContainer"})
+    if outter_div == None:
+        print("Cannot retrive the message board")
+        return None, None
     
-    return str(last_article["data-author"]), str(last_msg_.text.strip())
+    articles = outter_div.findChildren("article" , recursive=False)
+    if len(articles) == 0:
+        print("No messages in the message board")
+        return None, None
+    
+    last_article = articles[-1]
+    last_msg_ = last_article.find_all("div", {"class": "bbWrapper"})
+    if len(last_msg_) != 0:
+        last_msg_ = last_msg_[-1]
+        removal_quotes = last_msg_.find_all('blockquote')
+        for quotes in removal_quotes:
+            quotes.decompose()
+        
+        return str(last_article["data-author"]), str(last_msg_.text.strip())
+    else:
+        print("Error in the last message")
+        return None, None
 
 def getNumber(DRIVER, URL):
     soup = webScrap(DRIVER, URL)
@@ -70,7 +86,10 @@ if __name__ == '__main__':
     last_time = datetime.now()
     last_num, url = findLastPoint(DRIVER, url)
     last_author, last_msg = getLastAuthorAndMsg(webScrap(DRIVER, url))
-    print("The last post was by " + last_author + " saying: " + last_msg)
+    if last_author == None or last_msg == None:
+        print("Error retriving the last post")
+    else:
+        print("The last post was by " + last_author + " saying: " + last_msg)
      
     while True:
         new_num, url = findLastPoint(DRIVER, url)
